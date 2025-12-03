@@ -1,211 +1,106 @@
 #include <iostream>
-#include <string>
+#include <memory>
+#include "game.h"
+#include "subprogram.h"
 
 using namespace std;
 
-enum Action
-{
-    ACTION_NONE = 0,
-    ACTION_ADD_ONE = 1,
-    ACTION_DOUBLE_VALUE = 2,
-    ACTION_DIVIDE_BY_THREE = 3
-};
-
-struct Player
-{
-    string player_name;
-    Action previous_action;
-
-    Player(const string& name_parameter = "")
-        : player_name(name_parameter), previous_action(ACTION_NONE) {
-    }
-};
-
-void print_state(long long number_a, long long number_b)
-{
-    cout << "   Current numbers: a = " << number_a
-        << ", b = " << number_b
-        << ", sum = " << (number_a + number_b) << "\n";
-}
-
-bool make_move(Player& current_player,
-    long long& number_a,
-    long long& number_b,
-    long long target_sum)
-{
-    Action action_to_execute = ACTION_NONE;
-
-    if (current_player.previous_action == ACTION_ADD_ONE)
-    {
-        action_to_execute = ACTION_DOUBLE_VALUE;
-    }
-    else if (current_player.previous_action == ACTION_DOUBLE_VALUE)
-    {
-        action_to_execute = ACTION_ADD_ONE;
-    }
-    else if (current_player.previous_action == ACTION_DIVIDE_BY_THREE)
-    {
-        action_to_execute = ACTION_ADD_ONE;
-    }
-    else
-    {
-        action_to_execute = ACTION_DOUBLE_VALUE;
-    }
-
-    if (current_player.previous_action != ACTION_DIVIDE_BY_THREE &&
-        (number_a % 3 == 0 || number_b % 3 == 0))
-    {
-        long long current_sum = number_a + number_b;
-        if (current_sum * 2 > target_sum)
-        {
-            action_to_execute = ACTION_DIVIDE_BY_THREE;
-        }
-    }
-
-    cout << current_player.player_name << " makes a move.\n";
-
-    switch (action_to_execute)
-    {
-    case ACTION_ADD_ONE:
-    {
-        if (number_a <= number_b)
-        {
-            cout << "   Action: add 1 to a.\n";
-            ++number_a;
-        }
-        else
-        {
-            cout << "   Action: add 1 to b.\n";
-            ++number_b;
-        }
-        break;
-    }
-
-    case ACTION_DOUBLE_VALUE:
-    {
-        if (number_a <= number_b)
-        {
-            cout << "   Action: double a.\n";
-            number_a *= 2;
-        }
-        else
-        {
-            cout << "   Action: double b.\n";
-            number_b *= 2;
-        }
-        break;
-    }
-
-    case ACTION_DIVIDE_BY_THREE:
-    {
-        if (number_a % 3 == 0 && number_b % 3 == 0)
-        {
-            if (number_a >= number_b)
-            {
-                cout << "   Action: divide a by 3.\n";
-                number_a /= 3;
-            }
-            else
-            {
-                cout << "   Action: divide b by 3.\n";
-                number_b /= 3;
-            }
-        }
-        else if (number_a % 3 == 0)
-        {
-            cout << "   Action: divide a by 3.\n";
-            number_a /= 3;
-        }
-        else if (number_b % 3 == 0)
-        {
-            cout << "   Action: divide b by 3.\n";
-            number_b /= 3;
-        }
-        else
-        {
-            cout << "   (Divide by 3 impossible, adding 1 to a instead.)\n";
-            ++number_a;
-            action_to_execute = ACTION_ADD_ONE;
-        }
-        break;
-    }
-
-    default:
-        break;
-    }
-
-    current_player.previous_action = action_to_execute;
-
-    print_state(number_a, number_b);
-
-    long long current_sum = number_a + number_b;
-    if (current_sum >= target_sum)
-    {
-        cout << "   " << current_player.player_name
-            << " reached the target sum (" << current_sum
-            << " >= " << target_sum << ") and wins!\n";
-        return true;
-    }
-
-    return false;
-}
-
 int main()
 {
-    long long input_number_a, input_number_b;
+    long long number_a, number_b;
     cout << "Enter two positive integers (a b): ";
-    cin >> input_number_a >> input_number_b;
+    cin >> number_a >> number_b;
 
-    if (input_number_a <= 0 || input_number_b <= 0)
-    {
+    if (number_a <= 0 || number_b <= 0) {
         cout << "Numbers must be positive.\n";
         return 0;
     }
 
-    long long initial_sum = input_number_a + input_number_b;
-    long long required_target_sum = initial_sum * 10;
+    long long initial_sum = number_a + number_b;
+    long long target_sum = initial_sum * 10;
 
     cout << "\nInitial sum = " << initial_sum
-        << ", target sum = " << required_target_sum << ".\n";
-    print_state(input_number_a, input_number_b);
-    cout << "\nGame Started!\n\n";
+        << ", target sum = " << target_sum << ".\n\n";
 
-    Player player_list[3] = {
-        Player("Coroutine 1"),
-        Player("Coroutine 2"),
-        Player("Coroutine 3")
-    };
+    auto state = std::make_shared<GameState>();
+    state->number_a = number_a;
+    state->number_b = number_b;
 
-    int active_player_index = 0;
-    int move_counter = 1;
+    Subprogram subprogram_1 = subprogram_coroutine(state);
+    Subprogram subprogram_2 = subprogram_coroutine(state);
+    Subprogram subprogram_3 = subprogram_coroutine(state);
 
-    while (true)
-    {
-        cout << "Move " << move_counter
-            << " ("<< player_list[active_player_index].player_name <<")\n";
+    Subprogram* players[3] = { &subprogram_1, &subprogram_2, &subprogram_3 };
 
-        bool victory = make_move(player_list[active_player_index],
-            input_number_a,
-            input_number_b,
-            required_target_sum);
+    int current_player_index = 0;
+    int move_number = 1;
 
-        cout << "\n";
+    while (true) {
+        long long current_sum = state->number_a + state->number_b;
 
-        if (victory)
-        {
+        if (current_sum >= target_sum) {
             cout << "Game Over!\n";
-            cout << "Winner: " << player_list[active_player_index].player_name << ".\n";
+            cout << "Winner: Subprogram " << (current_player_index + 1) << ".\n";
             break;
         }
 
-        active_player_index = (active_player_index + 1) % 3;
-        ++move_counter;
+        cout << "Move " << move_number
+            << " (Subprogram " << (current_player_index + 1) << ")\n";
 
-        if (move_counter > 10000)
+        Move move = players[current_player_index]->ask();
+        Action action_to_execute = move.action;
+
+        long long& chosen_number = (move.which == WHICH_A ? state->number_a : state->number_b);
+
+        switch (action_to_execute)
         {
+        case ACTION_ADD_ONE:
+            cout << "   Action: " << action_to_string(action_to_execute) << " ";
+            chosen_number += 1;
+            break;
+
+        case ACTION_DOUBLE_VALUE:
+            cout << "   Action: " << action_to_string(action_to_execute) << " ";
+            chosen_number *= 2;
+            break;
+
+        case ACTION_DIVIDE_BY_THREE:
+            cout << "   Action: " << action_to_string(action_to_execute) << " ";
+            if (chosen_number % 3 == 0) {
+                chosen_number /= 3;
+            }
+            else {
+                cout << "(cannot divide, changed to add 1) ";
+                chosen_number += 1;
+            }
+            break;
+
+        default:
+            cout << "   Action: none\n";
+            break;
+        }
+
+        cout << "(applied to "
+            << ((&chosen_number == &state->number_a) ? "a)\n" : "b)\n");
+
+        cout << "   Current numbers: a = " << state->number_a
+            << ", b = " << state->number_b
+            << ", sum = " << (state->number_a + state->number_b) << "\n\n";
+
+        current_sum = state->number_a + state->number_b;
+        if (current_sum >= target_sum) {
+            cout << "Game Over!\n";
+            cout << "Winner: Subprogram " << (current_player_index + 1) << ".\n";
+            break;
+        }
+
+        if (move_number > 10000) {
             cout << "Game too long, terminating.\n";
             break;
         }
+
+        current_player_index = (current_player_index + 1) % 3;
+        ++move_number;
     }
 
     return 0;
